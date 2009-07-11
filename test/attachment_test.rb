@@ -19,9 +19,10 @@ class AttachmentTest < Test::Unit::TestCase
       rebuild_model
       @old_default_options = Paperclip::Attachment.default_options.dup
       @new_default_options = @old_default_options.merge({
-        :path => "argle/bargle",
-        :url => "fooferon",
-        :default_url => "not here.png"
+        :path           => "argle/bargle",
+        :url            => "fooferon",
+        :default_url    => "not here.png",
+        :keep_old_files => false
       })
     end
 
@@ -763,5 +764,95 @@ class AttachmentTest < Test::Unit::TestCase
         assert_equal @file.size, @dummy.avatar.size
       end
     end
+  end
+
+
+######################
+# test :keep_old_files
+######################
+
+  context "An attachment with :keep_old_files => true" do
+
+    setup do
+      @old_defaults = Paperclip::Attachment.default_options.dup
+      Paperclip::Attachment.default_options.merge!( {
+          :path  => ":rails_root/tmp/:attachment/:class/:style/:id/:basename.:extension"
+      })
+      FileUtils.rm_rf("tmp")
+
+      @file       = File.new(File.join(File.dirname(__FILE__), "fixtures", "5k.png"   ), 'rb')
+      @file_2     = File.new(File.join(File.dirname(__FILE__), "fixtures", "50x50.png"), 'rb')
+
+      rebuild_model
+      @instance   = Dummy.new
+
+      @attachment = Paperclip::Attachment.new(:avatar, @instance, {
+            :keep_old_files => true,
+            :styles         => {:small => "32x32#"}
+          })
+      @attachment.assign(@file)
+      @attachment.save
+    end
+
+    teardown do
+      @file.close
+      @file_2.close
+      Paperclip::Attachment.default_options.merge!(@old_defaults)
+    end
+
+    should "return the real urls" do
+      assert_match %r{^/system/avatars/#{@instance.id}/original/5k\.png}, @attachment.url
+      assert_match %r{^/system/avatars/#{@instance.id}/small/5k\.png}   , @attachment.url(:small)
+    end
+
+    should "commit the files to disk" do
+      assert File.exists?(@attachment.path(:original))
+      assert File.exists?(@attachment.path(:small   ))
+    end
+
+
+    context "after assigning a new file" do
+      setup do
+        @previous_files_path = @attachment.styles.keys.collect do |style|
+          @attachment.path(style)
+        end
+        @attachment.assign @file_2
+        @attachment.save
+      end
+
+      should "NOT delete the previous files after assigning nil and saving" do
+        @previous_files_path.each{|f| assert File.exists?(f), "#{f} should NOT have been deleted" }
+      end
+    end
+
+
+    context "" do
+      setup do
+        @old_files_path = @attachment.styles.keys.collect do |style|
+          @attachment.path(style)
+        end
+      end
+
+      should "NOT delete the files after assigning nil and saving" do
+        @attachment.expects_instance_write_with_nil___in_the_4_paperclip_columns
+        @attachment.assign nil
+        @attachment.save
+        @old_files_path.each{|f| assert File.exists?(f), "#{f} should NOT have been deleted" }
+      end
+
+      should "NOT delete the files when you call #clear and #save" do
+        @attachment.expects_instance_write_with_nil___in_the_4_paperclip_columns
+        @attachment.clear
+        @attachment.save
+        @old_files_path.each{|f| assert File.exists?(f), "#{f} should NOT have been deleted" }
+      end
+
+      should "NOT delete the files when you call #delete" do
+        @attachment.expects_instance_write_with_nil___in_the_4_paperclip_columns
+        @attachment.destroy
+        @old_files_path.each{|f| assert File.exists?(f), "#{f} should NOT have been deleted" }
+      end
+    end
+
   end
 end

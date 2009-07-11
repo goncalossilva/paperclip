@@ -189,6 +189,9 @@ module Paperclip
     #   to a command line error. This will override the global setting for this attachment. 
     #   Defaults to true. This option used to be called :whiny_thumbanils, but this is
     #   deprecated.
+    # * +keep_old_files+: Keep the existing attachment files (original + resized) from
+    #   being automatically deleted when an attachment is cleared or updated.
+    #   Defaults to +false+.
     # * +convert_options+: When creating thumbnails, use this free-form options
     #   field to pass in various convert command options.  Typical options are "-strip" to
     #   remove all Exif data from the image (save space for thumbnails and avatars) or

@@ -14,7 +14,8 @@ module Paperclip
         :default_style => :original,
         :validations   => [],
         :storage       => :filesystem,
-        :whiny         => Paperclip.options[:whiny] || Paperclip.options[:whiny_thumbnails]
+        :whiny         => Paperclip.options[:whiny] || Paperclip.options[:whiny_thumbnails],
+        :keep_old_files=> false
       }
     end
 
@@ -40,6 +41,7 @@ module Paperclip
       @default_style     = options[:default_style]
       @storage           = options[:storage]
       @whiny             = options[:whiny_thumbnails] || options[:whiny]
+      @keep_old_files    = options[:keep_old_files]
       @convert_options   = options[:convert_options] || {}
       @processors        = options[:processors] || [:thumbnail]
       @options           = options
@@ -394,9 +396,11 @@ module Paperclip
 
     def queue_existing_for_delete #:nodoc:
       return unless file?
-      @queued_for_delete += [:original, *@styles.keys].uniq.map do |style|
-        path(style) if exists?(style)
-      end.compact
+      unless @keep_old_files
+        @queued_for_delete += [:original, *@styles.keys].uniq.map do |style|
+          path(style) if exists?(style)
+        end.compact
+      end
       instance_write(:file_name, nil)
       instance_write(:content_type, nil)
       instance_write(:file_size, nil)

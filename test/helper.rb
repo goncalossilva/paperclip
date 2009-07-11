@@ -97,3 +97,14 @@ end
 def attachment options
   Paperclip::Attachment.new(:avatar, FakeModel.new, options)
 end
+
+module Paperclip
+  class Attachment
+    def expects_instance_write_with_nil___in_the_4_paperclip_columns
+      expects(:instance_write).with(:file_name    , nil)
+      expects(:instance_write).with(:content_type , nil)
+      expects(:instance_write).with(:file_size    , nil)
+      expects(:instance_write).with(:updated_at   , nil)
+    end
+  end
+end
